@@ -1,0 +1,25 @@
+[package]
+name = "lgfx"
+version = "0.1.0"
+authors = ["Kenta IDA <fuga@fugafuga.org>"]
+edition = "2021"
+resolver = "2"
+categories = ["embedded"]
+license = "MIT"
+
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true # Symbols are nice and they don't increase the size on Flash
+opt-level = "z"
+
+[features]
+
+[dependencies]
+anyhow = "1"
+embedded-graphics = "0.7.1"
+
+[build-dependencies]
+anyhow = "1"
+bindgen = "0.60.1"
