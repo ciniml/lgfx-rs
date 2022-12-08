@@ -13,15 +13,38 @@
 #include <LovyanGFX.hpp>
 #include <stdint.h>
 
-static LGFX gfx;
+#ifndef LGFX_SDL
+static LGFX GFX;
+#else
+static alignas(LGFX) std::uint8_t gfx_storage[sizeof(LGFX)];
+#define GFX (*reinterpret_cast<LGFX*>(gfx_storage))
+#endif
+
 using namespace lgfx::v1;
 
+#ifndef LGFX_SDL
 
 lgfx_target_t lgfx_c_setup(void) 
 {
-    gfx.init();
-    return reinterpret_cast<lgfx_target_t>(static_cast<LovyanGFX*>(&gfx));
+    GFX.init();
+    return reinterpret_cast<lgfx_target_t>(static_cast<LovyanGFX*>(&GFX));
 }
+
+#else 
+
+lgfx_target_t lgfx_c_setup_with_size(int width, int height) 
+{
+    memset(gfx_storage, 0, sizeof(LGFX));
+    new(gfx_storage) LGFX(width, height);
+    GFX.init();
+    return reinterpret_cast<lgfx_target_t>(static_cast<LovyanGFX*>(&GFX));
+}
+
+void lgfx_c_panel_sdl_event_handler(void)
+{
+    lgfx::Panel_sdl::sdl_event_handler();
+}
+#endif
 
 ::epd_mode_t lgfx_c_get_epd_mode(lgfx_target_t target) {
     auto gfx = static_cast<LGFX*>(reinterpret_cast<LovyanGFX*>(target));

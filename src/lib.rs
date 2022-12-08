@@ -110,6 +110,7 @@ impl<'a> Drop for LgfxGuard<'a> {
 
 static mut GFX_INITIALIZED: bool = false;
 impl Gfx {
+    #[cfg(target_os="espidf")]
     pub fn setup() -> Option<Gfx> {
         if unsafe { GFX_INITIALIZED } {
             None
@@ -122,11 +123,29 @@ impl Gfx {
             })
         }
     }
+    #[cfg(target_os="linux")]
+    pub fn setup(width: i32, height: i32) -> Option<Gfx> {
+        if unsafe { GFX_INITIALIZED } {
+            None
+        } else {
+            unsafe {
+                GFX_INITIALIZED = true;
+            }
+            Some(Gfx {
+                target: Mutex::new(unsafe { lgfx_c_setup_with_size(width, height) }),
+            })
+        }
+    }
     pub fn as_shared<'a>(&'a self) -> SharedLgfxTarget<'a> {
         SharedLgfxTarget::new(&self.target)
     }
     pub fn create_sprite(&self, w: i32, h: i32) -> Result<Sprite, ()> {
         Sprite::new(self, w, h)
+    }
+
+    #[cfg(target_os="linux")]
+    pub fn handle_sdl_event() {
+        unsafe { lgfx_c_panel_sdl_event_handler(); }
     }
 }
 impl LgfxTarget for lgfx_target_t {

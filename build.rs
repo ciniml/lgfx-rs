@@ -194,7 +194,7 @@ const LGFX_FONTS: [&str; 186] = [
     "efontTW_24_i",
 ];
 
-const LGFX_C_HEADER_PATH: &str = "components/lgfx_c/lgfx_c.h";
+const LGFX_C_HEADER_PATH: &str = "lgfx_c/lgfx_c.h";
 
 // Necessary because of this issue: https://github.com/rust-lang/cargo/issues/9641
 fn main() -> anyhow::Result<()> {

@@ -46,6 +46,7 @@ typedef enum epd_mode
 typedef struct lgfx_target *lgfx_target_t;
 
 lgfx_target_t lgfx_c_setup(void);
+lgfx_target_t lgfx_c_setup_with_size(int width, int height);
 
 epd_mode_t lgfx_c_get_epd_mode(lgfx_target_t target);
 void lgfx_c_set_epd_mode(lgfx_target_t target, enum epd_mode epd_mode);
@@ -85,6 +86,8 @@ size_t lgfx_c_draw_char_rgb332(lgfx_target_t target, int32_t x, int32_t y, uint1
 size_t lgfx_c_draw_char_rgb888(lgfx_target_t target, int32_t x, int32_t y, uint16_t unicode, uint32_t color, uint32_t bg, float size_x, float size_y);
 
 bool lgfx_c_set_font(lgfx_target_t target, const void* font);
+
+void lgfx_c_panel_sdl_event_handler(void);
 
 #ifdef __cplusplus
 }
