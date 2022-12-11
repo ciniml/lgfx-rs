@@ -6,9 +6,37 @@ type MutexGuard<'a, T> = std::sync::MutexGuard<'a, T>;
 #[allow(non_upper_case_globals)]
 mod lgfx_sys {
     include!(concat!(env!("OUT_DIR"), "/lgfx.rs"));
+
+    use core::default::Default;
+    impl Default for font_metrics {
+        fn default() -> Self {
+            Self {
+                width: 0,
+                x_advance: 0,
+                x_offset: 0,
+                height: 0,
+                y_advance: 0,
+                y_offset: 0,
+                baseline: 0,
+            }
+        }
+    }
 }
 use lgfx_sys::*;
 pub use lgfx_sys::textdatum_t;
+pub use lgfx_sys::textdatum_top_left;
+pub use lgfx_sys::textdatum_top_center;
+pub use lgfx_sys::textdatum_top_centre;
+pub use lgfx_sys::textdatum_top_right;
+pub use lgfx_sys::textdatum_middle_left;
+pub use lgfx_sys::textdatum_middle_center;
+pub use lgfx_sys::textdatum_middle_centre;
+pub use lgfx_sys::textdatum_middle_right;
+pub use lgfx_sys::textdatum_bottom_left;
+pub use lgfx_sys::textdatum_bottom_center;
+pub use lgfx_sys::textdatum_bottom_centre;
+pub use lgfx_sys::textdatum_bottom_right;
+pub use lgfx_sys::font_metrics_t;
 
 #[derive(Debug)]
 pub enum EpdMode {
@@ -16,6 +44,12 @@ pub enum EpdMode {
     Text = 2,
     Fast = 3,
     Fastest = 4,
+}
+
+#[derive(Debug)]
+pub enum LgfxError {
+    Unicode,
+    Metrics,
 }
 
 impl TryFrom<epd_mode_t> for EpdMode {
@@ -308,6 +342,12 @@ pub trait DrawChars<C: Color> {
     fn draw_chars(&self, s: &str, x: i32, y: i32, fg: C, bg: C, size_x: f32, size_y: f32) -> i32;
 }
 
+pub trait DrawString<C: Color> {
+    fn measure_string(&self, s: &str, size_x: f32, size_y: f32) -> (i32, i32);
+    fn draw_string(&self, s: &str, x: i32, y: i32, fg: C, bg: C, size_x: f32, size_y: f32, datum: textdatum_t) -> (i32, i32);
+}
+
+
 impl<Target> DrawChar<ColorRgb332> for Target
 where
     Target: LgfxTarget,
@@ -428,6 +468,64 @@ where
     }
 }
 
+impl<Target, C> DrawString<C> for Target
+where
+    Target: LgfxTarget + DrawChar<C> + FontManupulation,
+    C: Color,
+{
+    fn measure_string(&self, s: &str, size_x: f32, size_y: f32) -> (i32, i32) {
+        let scaling_x = (size_x * 65536.0).floor() as i32;
+        let scaling_y = (size_y * 65536.0).floor() as i32;
+        let mut left = 0;
+        let mut right = 0;
+        let mut max_height = 0;
+        let font = self.get_font().unwrap();
+        for c in s.chars() {
+            if let Ok(metrics) = font.metrics(c) {
+                let scaled_offset = ((metrics.x_offset as i32) * scaling_x) >> 16;
+                let scaled_advance = ((metrics.x_advance as i32) * scaling_x) >> 16;
+                let scaled_width = ((metrics.width as i32) * scaling_x) >> 16;
+                let scaled_height = ((metrics.height as i32) * scaling_y) >> 16;
+                if left == 0 && right == 0 && scaled_offset < 0 {
+                    left = -scaled_offset;
+                    right = -scaled_offset;
+                }
+                right = left + scaled_advance.max(scaled_width + scaled_offset);
+                left += scaled_advance;
+                max_height = max_height.max(scaled_height);
+            }
+        }
+        (right, max_height)
+    }
+    fn draw_string(&self, s: &str, mut x: i32, mut y: i32, fg: C, bg: C, size_x: f32, size_y: f32, datum: textdatum_t) -> (i32, i32) {
+        let (string_width, string_height) = self.measure_string(s, size_x, size_y);
+        let metrics = self.get_font().unwrap().default_metrics();
+        //let scaling_x = (size_x * 65536.0).floor() as i32;
+        let scaling_y = (size_y * 65536.0).floor() as i32;
+
+        if (datum & textdatum_middle_left) != 0 {
+            y -= string_height >> 1;
+        } else if (datum & textdatum_bottom_left) != 0 {
+            y -= string_height;
+        } else if (datum & textdatum_baseline_left) != 0 {
+            y -= (metrics.baseline as i32 * scaling_y) >> 16;
+        }
+        y -= (metrics.y_offset as i32 * scaling_y) >> 16;
+        
+        if (datum & textdatum_top_center) != 0 {
+            x -= string_width >> 1;
+        } else if (datum & textdatum_top_right) != 0  {
+            x -= string_width;
+        }
+        
+        let mut width = 0;
+        for c in s.chars() {
+            width += self.draw_char(c, x + width, y, fg.clone(), bg.clone(), size_x, size_y);
+        }
+        (string_width, string_height)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct LgfxFont {
     pub(crate) ptr: *const core::ffi::c_void,
@@ -435,14 +533,50 @@ pub struct LgfxFont {
 unsafe impl Sync for LgfxFont {}
 unsafe impl Send for LgfxFont {}
 
+impl LgfxFont {
+    pub fn default_metrics(&self) -> font_metrics_t  {
+        let mut metrics = font_metrics_t::default();
+        unsafe {
+            lgfx_c_font_get_default_metrics(self.ptr, &mut metrics)
+        };
+        metrics
+    }
+    pub fn metrics(&self, c: char) -> Result<font_metrics_t, LgfxError>  {
+        let mut metrics = self.default_metrics();
+        let mut buffer = [0u16; 2];
+        let encoded = c.encode_utf16(&mut buffer);
+        if encoded.len() != 1 {
+            return Err(LgfxError::Unicode);
+        }
+        let result = unsafe {
+            lgfx_c_font_update_font_metrics(self.ptr, &mut metrics, encoded[0])
+        };
+        if result {
+            Ok(metrics)
+        } else {
+            Err(LgfxError::Metrics)
+        }
+    }
+}
+
 pub trait FontManupulation {
-    fn font_height(&mut self) -> i32;
+    fn font_height(&self) -> i32;
+    fn get_font(&self) -> Result<LgfxFont, ()>;
     fn set_font(&mut self, font: LgfxFont) -> Result<(), ()>;
     fn set_text_size(&mut self, sx: f32, sy: f32);
+    fn set_text_datum(&mut self, datum: textdatum_t);
 }
 impl<Target: LgfxTarget> FontManupulation for Target {
-    fn font_height(&mut self) -> i32 {
+    fn font_height(&self) -> i32 {
         unsafe { lgfx_c_font_height(self.target()) }
+    }
+    fn get_font(&self) -> Result<LgfxFont, ()> {
+        let font_ptr = unsafe { lgfx_c_get_font(self.target()) };
+        if font_ptr.is_null() {
+            Err(())
+        } else {
+            Ok(LgfxFont { ptr: font_ptr })
+        }
     }
     fn set_font(&mut self, font: LgfxFont) -> Result<(), ()> {
         let success = unsafe { lgfx_c_set_font(self.target(), font.ptr) };
@@ -455,6 +589,11 @@ impl<Target: LgfxTarget> FontManupulation for Target {
     fn set_text_size(&mut self, sx: f32, sy: f32) {
         unsafe {
             lgfx_c_set_text_size(self.target(), sx, sy);
+        }
+    }
+    fn set_text_datum(&mut self, datum: textdatum_t) {
+        unsafe {
+            lgfx_c_set_text_datum(self.target(), datum);
         }
     }
 }

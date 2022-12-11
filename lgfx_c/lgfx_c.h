@@ -43,6 +43,17 @@ typedef enum epd_mode
     epd_fastest = 4,
 } epd_mode_t;
 
+typedef struct font_metrics
+{
+    int16_t width;
+    int16_t x_advance;
+    int16_t x_offset;
+    int16_t height;
+    int16_t y_advance;
+    int16_t y_offset;
+    int16_t baseline;
+} font_metrics_t;
+
 typedef struct lgfx_target *lgfx_target_t;
 
 lgfx_target_t lgfx_c_setup(void);
@@ -82,10 +93,14 @@ void lgfx_c_end_write(lgfx_target_t target);
 size_t lgfx_c_write(lgfx_target_t target, const uint8_t* buffer, size_t length);
 void lgfx_c_set_cursor(lgfx_target_t target, int32_t x, int32_t y);
 void lgfx_c_set_text_size(lgfx_target_t target, float sx, float sy);
+void lgfx_c_set_text_datum(lgfx_target_t target, textdatum_t datum);
 size_t lgfx_c_draw_char_rgb332(lgfx_target_t target, int32_t x, int32_t y, uint16_t unicode, uint8_t color, uint8_t bg, float size_x, float size_y);
 size_t lgfx_c_draw_char_rgb888(lgfx_target_t target, int32_t x, int32_t y, uint16_t unicode, uint32_t color, uint32_t bg, float size_x, float size_y);
 
+const void* lgfx_c_get_font(lgfx_target_t target);
 bool lgfx_c_set_font(lgfx_target_t target, const void* font);
+void lgfx_c_font_get_default_metrics(const void* font, font_metrics_t *metrics);
+bool lgfx_c_font_update_font_metrics(const void* font, font_metrics_t *metrics, uint16_t unicode);
 
 void lgfx_c_panel_sdl_event_handler(void);
 

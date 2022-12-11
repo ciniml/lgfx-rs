@@ -171,6 +171,10 @@ void lgfx_c_set_text_size(lgfx_target_t target, float sx, float sy) {
     auto gfx = reinterpret_cast<LovyanGFX*>(target);
     gfx->setTextSize(sx, sy);
 }
+void lgfx_c_set_text_datum(lgfx_target_t target, ::textdatum_t datum) {
+    auto gfx = reinterpret_cast<LovyanGFX*>(target);
+    gfx->setTextDatum(datum);
+}
 size_t lgfx_c_draw_char_rgb332(lgfx_target_t target, int32_t x, int32_t y, uint16_t unicode, uint8_t color, uint8_t bg, float size_x, float size_y) {
     auto gfx = reinterpret_cast<LovyanGFX*>(target);
     return gfx->drawChar(x, y, unicode, color, bg, size_x, size_y);
@@ -178,6 +182,11 @@ size_t lgfx_c_draw_char_rgb332(lgfx_target_t target, int32_t x, int32_t y, uint1
 size_t lgfx_c_draw_char_rgb888(lgfx_target_t target, int32_t x, int32_t y, uint16_t unicode, uint32_t color, uint32_t bg, float size_x, float size_y) {
     auto gfx = reinterpret_cast<LovyanGFX*>(target);
     return gfx->drawChar(x, y, unicode, color, bg, size_x, size_y);
+}
+
+const void* lgfx_c_get_font(lgfx_target_t target) {
+    auto gfx = reinterpret_cast<LovyanGFX*>(target);
+    return gfx->getFont();
 }
 
 bool lgfx_c_set_font(lgfx_target_t target, const void* font) {
@@ -188,4 +197,15 @@ bool lgfx_c_set_font(lgfx_target_t target, const void* font) {
     auto gfx = reinterpret_cast<LovyanGFX*>(target);
     gfx->setFont(ifont);
     return true;
+}
+
+void lgfx_c_font_get_default_metrics(const void* font, font_metrics_t *metrics) {
+    assert(font != nullptr);
+    auto ifont = reinterpret_cast<const IFont*>(font);
+    ifont->getDefaultMetric(reinterpret_cast<lgfx::v1::FontMetrics*>(metrics));
+}
+bool lgfx_c_font_update_font_metrics(const void* font, font_metrics_t *metrics, uint16_t unicode) {
+    if( font == nullptr ) return false;
+    auto ifont = reinterpret_cast<const IFont*>(font);
+    return ifont->updateFontMetric(reinterpret_cast<lgfx::v1::FontMetrics*>(metrics), unicode);
 }
