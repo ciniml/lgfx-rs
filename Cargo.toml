@@ -23,3 +23,5 @@ embedded-graphics = "0.7.1"
 [build-dependencies]
 anyhow = "1"
 bindgen = "0.60.1"
+clang-sys = {version = "1.4.0", features = ["clang_6_0"]}
+regex = "1.7.0"

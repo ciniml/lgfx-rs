@@ -75,6 +75,8 @@ void lgfx_c_fill_rect_rgb332(lgfx_target_t target, int32_t left, int32_t top, in
 void lgfx_c_fill_rect_rgb888(lgfx_target_t target, int32_t left, int32_t top, int32_t width, int32_t height, uint32_t color);
 void lgfx_c_draw_line_rgb332(lgfx_target_t target, int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint8_t color);
 void lgfx_c_draw_line_rgb888(lgfx_target_t target, int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t color);
+void lgfx_c_draw_rect_rgb332(lgfx_target_t target, int32_t x, int32_t y, int32_t w, int32_t h, uint8_t color);
+void lgfx_c_draw_rect_rgb888(lgfx_target_t target, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
 
 void lgfx_c_push_image_grayscale(lgfx_target_t target, int32_t x, int32_t y, int32_t w, int32_t h, const uint8_t* data);
 void lgfx_c_push_image_rgb332(lgfx_target_t target, int32_t x, int32_t y, int32_t w, int32_t h, const uint8_t* data);

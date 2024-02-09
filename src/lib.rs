@@ -195,6 +195,11 @@ where
     fn draw_png<'a>(&mut self, data: &'a [u8]) -> DrawPng<'a> {
         DrawPng::new(self.target(), data)
     }
+    fn push_image_rgb888(&mut self, x: i32, y: i32, w: i32, h: i32, data: &[u8]) {
+        let target = self.target();
+        unsafe { lgfx_c_push_image_rgb888(target.target(), x, y, w, h, data.as_ptr()) };
+    
+    }
 }
 
 pub struct Sprite {
@@ -202,7 +207,7 @@ pub struct Sprite {
 }
 impl Sprite {
     fn new(gfx: &Gfx, w: i32, h: i32) -> Result<Self, ()> {
-        let mut target = gfx.as_shared().mutex.lock().unwrap();
+        let target = gfx.as_shared().mutex.lock().unwrap();
         let sprite = unsafe { lgfx_c_create_sprite(target.target(), w, h) };
         if sprite == core::ptr::null_mut() {
             Err(())
@@ -235,6 +240,7 @@ pub trait LgfxTarget {
 
 pub trait DrawImage {
     fn draw_png<'a>(&mut self, data: &'a [u8]) -> DrawPng<'a>;
+    fn push_image_rgb888(&mut self, x: i32, y: i32, w: i32, h: i32, data: &[u8]);
 }
 
 pub trait Color: Clone {
@@ -290,6 +296,7 @@ where
 
 pub trait DrawPrimitives<C: Color> {
     fn clear(&mut self, color: C);
+    fn draw_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: C);
     fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: C);
     fn draw_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: C);
 }
@@ -306,6 +313,11 @@ where
     fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: ColorRgb332) {
         unsafe {
             lgfx_c_fill_rect_rgb332(self.target(), x, y, w, h, color.raw);
+        }
+    }
+    fn draw_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: ColorRgb332) {
+        unsafe {
+            lgfx_c_draw_rect_rgb332(self.target(), x, y, w, h, color.raw);
         }
     }
     fn draw_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: ColorRgb332) {
@@ -326,6 +338,11 @@ where
     fn fill_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: ColorRgb888) {
         unsafe {
             lgfx_c_fill_rect_rgb888(self.target(), x, y, w, h, color.raw);
+        }
+    }
+    fn draw_rect(&mut self, x: i32, y: i32, w: i32, h: i32, color: ColorRgb888) {
+        unsafe {
+            lgfx_c_draw_rect_rgb888(self.target(), x, y, w, h, color.raw);
         }
     }
     fn draw_line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: ColorRgb888) {

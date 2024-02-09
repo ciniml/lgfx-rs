@@ -195,14 +195,29 @@ const LGFX_FONTS: [&str; 186] = [
 ];
 
 const LGFX_C_HEADER_PATH: &str = "lgfx_c/lgfx_c.h";
+const LGFX_C_SOURCE_PATH: &str = "lgfx_c/lgfx_c.cpp";
 
 // Necessary because of this issue: https://github.com/rust-lang/cargo/issues/9641
 fn main() -> anyhow::Result<()> {
     // Rebuild if LGFX C binding is changed.
     println!("cargo:rerun-if-changed={}", LGFX_C_HEADER_PATH);
+    println!("cargo:rerun-if-changed={}", LGFX_C_SOURCE_PATH);
+
+    // Get libclang version number to construct include path.
+    clang_sys::load().expect("failed to load libclang");
+    let clang_version = unsafe {
+        let cxstring = clang_sys::clang_getClangVersion();
+        let clang_version = std::ffi::CStr::from_ptr(clang_sys::clang_getCString(cxstring)).to_string_lossy().into_owned() ;
+        clang_sys::clang_disposeString(cxstring);
+        clang_version  
+    };
+    let clang_version_pattern = regex::Regex::new(r"\d+\.\d+\.\d+").unwrap();
+    let clang_version_number = clang_version_pattern.find(clang_version.as_str()).unwrap().as_str();
+    let clang_version_number_major = clang_version_number.split('.').next().unwrap();
+    eprintln!("libclang version: {}, major: {}", clang_version_number, clang_version_number_major);
 
     let libclang_path = env::var("LIBCLANG_PATH").expect("LIBCLANG_PATH must be set");
-    let libclang_include_path: PathBuf = [libclang_path.as_str(), "clang", "14.0.0", "include"].iter().collect();
+    let libclang_include_path: PathBuf = [libclang_path.as_str(), "clang", clang_version_number_major, "include"].iter().collect();
     let bindings = bindgen::Builder::default()
         .header(LGFX_C_HEADER_PATH)
         .clang_arg("-nostdinc")

@@ -7,15 +7,16 @@
 // See README.md for license details.
 
 #include "lgfx_c.h"
-
-#define LGFX_USE_V1
-#define LGFX_AUTODETECT
-#include <LovyanGFX.hpp>
 #include <stdint.h>
 
-#ifndef LGFX_SDL
+#ifdef LGFX_SDL
+#include <M5GFX.h>
+using LGFX = M5GFX;
 static LGFX GFX;
 #else
+#include <M5AtomDisplay.h>
+using LGFX = M5AtomDisplay;
+//static M5ModuleDisplay display(960, 540, 60, 960, 1080, 1, 2, 148500000U);
 static alignas(LGFX) std::uint8_t gfx_storage[sizeof(LGFX)];
 #define GFX (*reinterpret_cast<LGFX*>(gfx_storage))
 #endif
@@ -26,7 +27,20 @@ using namespace lgfx::v1;
 
 lgfx_target_t lgfx_c_setup(void) 
 {
+    memset(gfx_storage, 0, sizeof(LGFX));
+    new(gfx_storage) LGFX(960, 540, 60, 960, 1080, 1, 2, 148500000U);
     GFX.init();
+    auto panel = (lgfx::Panel_M5HDMI*)GFX.getPanel();
+    lgfx::Panel_M5HDMI::video_timing_t param;
+    param.h.active = 1920/2;
+    param.h.front_porch = 88/2;
+    param.h.sync = 44/2;
+    param.h.back_porch = 148/2;
+    param.v.active = 1080;
+    param.v.front_porch = 4;
+    param.v.sync = 5;
+    param.v.back_porch = 36;
+    panel->setVideoTiming(&param);
     return reinterpret_cast<lgfx_target_t>(static_cast<LovyanGFX*>(&GFX));
 }
 
@@ -52,7 +66,7 @@ void lgfx_c_panel_sdl_event_handler(void)
 }
 void lgfx_c_set_epd_mode(lgfx_target_t target, ::epd_mode_t epd_mode) {
     auto gfx = static_cast<LGFX*>(reinterpret_cast<LovyanGFX*>(target));
-    gfx->setEpdMode(static_cast<lgfx::v1::epd_mode_t>(epd_mode));
+    gfx->setEpdMode(static_cast<lgfx::v1::epd_mode_t>(epd_mode));)
 }
 bool lgfx_c_is_epd(lgfx_target_t target) {
     auto gfx = static_cast<LGFX*>(reinterpret_cast<LovyanGFX*>(target));
@@ -111,6 +125,15 @@ void lgfx_c_draw_line_rgb332(lgfx_target_t target, int32_t x0, int32_t y0, int32
 void lgfx_c_draw_line_rgb888(lgfx_target_t target, int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t color){
     auto gfx = reinterpret_cast<LovyanGFX*>(target);
     gfx->drawLine(x0, y0, x1, y1, color);
+}
+
+void lgfx_c_draw_rect_rgb332(lgfx_target_t target, int32_t x, int32_t y, int32_t w, int32_t h, uint8_t color){
+    auto gfx = reinterpret_cast<LovyanGFX*>(target);
+    gfx->drawRect(x, y, w, h, color);
+}
+void lgfx_c_draw_rect_rgb888(lgfx_target_t target, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color){
+    auto gfx = reinterpret_cast<LovyanGFX*>(target);
+    gfx->drawRect(x, y, w, h, color);
 }
 
 void lgfx_c_push_image_grayscale(lgfx_target_t target, int32_t x, int32_t y, int32_t w, int32_t h, const uint8_t* data) {
